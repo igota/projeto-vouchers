@@ -1,0 +1,21 @@
+# Core API
+Flask==3.0.3
+flask-cors==6.0.2
+python-dotenv==1.0.1
+
+# Database
+PyMySQL==1.1.0
+DBUtils==3.1.2
+cryptography==43.0.3   # PyMySQL precisa disso para o auth padrão do MySQL 8 (caching_sha2_password)
+
+# HTTP clients for Omada / iControl / Vitae integrations
+requests==2.32.3
+urllib3==2.2.3
+
+# Production WSGI server (Unix only — see gunicorn_conf.py and docker-compose.yml).
+# Jobs (repor-estoque / limpar-expirados) run in the `scheduler` container
+# (deploy/scheduler/), which just curls the app's own HTTP endpoints.
+gunicorn==23.0.0
+
+# Only used by teste_login_seguranca.py (manual test script)
+beautifulsoup4==4.12.3

@@ -1,0 +1,84 @@
+# Rodar a partir de vouchers/: docker compose up -d --build
+# (o Compose carrega vouchers/.env automaticamente por estar na mesma pasta
+# deste arquivo — não precisa de --env-file).
+#
+# `name:` fixo abaixo porque o Compose usa o nome do projeto pra prefixar
+# volumes/redes (ex: vouchers_mysql_data) — sem isso, renomear esta pasta de
+# novo no futuro criaria um volume novo vazio em vez de reusar os dados.
+name: vouchers
+
+# Limite de tamanho/rotação de log: sem isso o driver padrão (json-file) não
+# tem limite nenhum, e um container rodando meses a fio enche o disco da VM.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      # Cria automaticamente um usuário não-root com ALL PRIVILEGES só no
+      # MYSQL_DATABASE acima — mas isso só acontece na 1ª inicialização de um
+      # volume vazio; num volume que já existia, o usuário foi criado à mão.
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ../deploy/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging: *default-logging
+
+  api:
+    build:
+      context: .
+    container_name: flask
+    env_file:
+      - .env
+    environment:
+      # Único valor de vouchers/.env que precisa mudar dentro do Compose: o
+      # host do MySQL passa a ser o nome do serviço, não mais 127.0.0.1.
+      DB_HOST: mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+
+  scheduler:
+    build:
+      context: ../deploy/scheduler
+    container_name: scheduler
+    environment:
+      KIOSK_API_KEY: ${KIOSK_API_KEY}
+    depends_on:
+      - api
+    restart: unless-stopped
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE: ""
+        VITE_KIOSK_API_KEY: ${KIOSK_API_KEY}
+    container_name: nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  mysql_data:

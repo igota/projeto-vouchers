@@ -1,0 +1,19 @@
+# Usado pelo build do frontend (contexto = raiz do projeto)
+.git
+vouchers
+projetoTeste
+banco de dados
+*.md
+
+**/node_modules
+frontend/dist
+frontend/node_modules
+
+**/__pycache__
+*.pyc
+
+.env
+**/.env
+**/.env.production
+*.log
+session*.json

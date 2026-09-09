@@ -1,0 +1,38 @@
+# Secrets / local config
+.env
+.env.*
+!.env.example
+vouchers/.env
+frontend/.env
+vouchers/json/usuarios_permitidos.json
+session.json
+session_hotspot.json
+projetoTeste/session.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Node
+node_modules/
+dist/
+dist-ssr/
+
+# Logs
+*.log
+jobs.log
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+tempCodeRunnerFile.py
+
+# Scripts de teste soltos (não fazem parte do sistema em producao, tem
+# URLs internas hardcoded) e prototipo legado — ver CLAUDE.md
+vouchers/teste_login.py
+vouchers/teste_login_seguranca.py
+teste.py
+projetoTeste/
