@@ -4,9 +4,15 @@ Sistema completo para emissão automatizada de vouchers de acesso Wi-Fi via tote
 
 Desenvolvido para operar 100% em rede local, integrando três sistemas externos (controlador de rede, sistema de credenciais e sistema de autenticação corporativa) em um fluxo único e auditável.
 
+## Contexto e problema resolvido
+
+O sistema atende acompanhantes de pacientes em ambiente hospitalar, oferecendo acesso Wi-Fi de forma self-service via totem com leitor de cartão RFID.
+
+Antes da automatização, cada voucher era gerado e confeccionado manualmente em papel, gerando retrabalho recorrente e dependência de disponibilidade de equipe em múltiplos setores — **Serviço Social**, **NTI**, **Almoxarifado** e **NAC** — para emitir, imprimir e controlar o estoque de vouchers. O totem elimina essa cadeia manual: o acompanhante aproxima o cartão, o sistema valida seu perfil, libera o voucher e imprime a etiqueta automaticamente, sem depender de atendimento humano em nenhum desses setores.
+
 ## Visão geral
 
-O projeto resolve um problema operacional real: liberar acesso à internet para visitantes/usuários de forma rápida, segura e sem depender de um atendente humano em cada emissão, mantendo controle de estoque de vouchers e histórico completo de quem recebeu o quê.
+O projeto resolve um problema operacional real: liberar acesso à internet para acompanhantes/usuários de forma rápida, segura e sem depender de um atendente humano em cada emissão, mantendo controle de estoque de vouchers e histórico completo de quem recebeu o quê.
 
 Há dois fluxos de uso, com modelos de acesso independentes:
 
@@ -15,6 +21,7 @@ Há dois fluxos de uso, com modelos de acesso independentes:
 
 ## Principais funcionalidades
 
+- Substituição completa da confecção manual de vouchers em papel por emissão self-service via totem
 - Emissão de voucher por leitura de cartão RFID, sem intervenção manual
 - Validação de usuário por tipo/perfil antes da liberação
 - Reposição automática diária de estoque de vouchers (geração em lote no controlador de rede)
