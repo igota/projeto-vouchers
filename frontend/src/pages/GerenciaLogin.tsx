@@ -63,7 +63,7 @@ function GerenciaLogin() {
         <div className="gl-container">
           <div className="gl-card">
             <span className="gl-badge">HRN · Vouchers</span>
-            <p className="gl-subtitle">Gerenciamento de Vouchers · Coordenadores</p>
+            <p className="gl-subtitle">Gerenciamento de Vouchers · </p>
 
             <form onSubmit={handleSubmit}>
               <div className="gl-input-group">
