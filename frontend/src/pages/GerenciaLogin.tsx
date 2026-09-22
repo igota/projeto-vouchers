@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE, setToken } from '../gerenciaApi'
+import logoVoucher from '../assets/logo-voucher.png'
+import logoHrn from '../assets/logo-hrn.png'
 import './GerenciaLogin.css'
 
 function GerenciaLogin() {
@@ -109,6 +111,20 @@ function GerenciaLogin() {
               {error && <div className="gl-error">{error}</div>}
             </form>
           </div>
+
+          <div className="gl-logos">
+            <img src={logoVoucher} alt="Logo Vouchers" className="gl-logo-voucher" />
+            <span className="gl-logo-divider" />
+            <span className="gl-logo-hrn-wrap">
+              <img src={logoHrn} alt="Logo Hospital Regional Norte" className="gl-logo-hrn" />
+            </span>
+          </div>
+
+          <p className="gl-footer">
+            &copy; SISTEMA DE VOUCHERS | HRN
+            <br />
+            Powered by Igor Maciel - Todos os direitos reservados.
+          </p>
         </div>
       </div>
     </>
