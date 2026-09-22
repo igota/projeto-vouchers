@@ -14,64 +14,17 @@ function LeitorCartao() {
   const bufferRef = useRef('')
   const bufferTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Animação em looping
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isReading && !showSuccess) {
-        setIsApproaching(prev => !prev)
+  const finalizarLeitura = (isError: boolean = false) => {
+    setTimeout(() => {
+      setIsReading(false)
+      bufferRef.current = ''
+
+      if (isError) {
+        setTimeout(() => setFeedback(''), 3000)
+      } else {
+        setFeedback('')
       }
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [isReading, showSuccess])
-
-  // Captura input do leitor de cartão via keydown no document (sem input focado)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isReading || showSuccess) return
-
-      if (e.key === 'Enter') {
-        processarBuffer()
-        return
-      }
-
-      if (e.key.length === 1) {
-        bufferRef.current += e.key
-
-        if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current)
-        bufferTimeoutRef.current = setTimeout(() => {
-          processarBuffer()
-        }, 120)
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current)
-    }
-  }, [isReading, showSuccess])
-
-  const processarBuffer = () => {
-    const valor = bufferRef.current
-    bufferRef.current = ''
-
-    if (!valor) return
-
-    let apenasNumeros = valor.replace(/\D/g, '')
-
-    if (apenasNumeros.length > 1 && apenasNumeros.startsWith('0')) {
-      apenasNumeros = apenasNumeros.substring(1)
-    }
-
-    console.log(`🔥 Input: "${apenasNumeros}" (${apenasNumeros.length} dígitos)`)
-
-    const digitosValidos = [7, 8, 9, 10, 14]
-    if (digitosValidos.includes(apenasNumeros.length)) {
-      console.log(`✅ Cartão completo: ${apenasNumeros}`)
-      iniciarLeitura(apenasNumeros)
-    } else if (apenasNumeros.length > 0) {
-      console.log(`⚠️ Cartão ignorado: ${apenasNumeros.length} dígitos (aceitos: 7, 8, 9, 10, 14)`)
-    }
+    }, 2000)
   }
 
   const buscarUsuario = async (id: string) => {
@@ -115,18 +68,65 @@ function LeitorCartao() {
     buscarUsuario(id)
   }
 
-  const finalizarLeitura = (isError: boolean = false) => {
-    setTimeout(() => {
-      setIsReading(false)
-      bufferRef.current = ''
+  const processarBuffer = () => {
+    const valor = bufferRef.current
+    bufferRef.current = ''
 
-      if (isError) {
-        setTimeout(() => setFeedback(''), 3000)
-      } else {
-        setFeedback('')
-      }
-    }, 2000)
+    if (!valor) return
+
+    let apenasNumeros = valor.replace(/\D/g, '')
+
+    if (apenasNumeros.length > 1 && apenasNumeros.startsWith('0')) {
+      apenasNumeros = apenasNumeros.substring(1)
+    }
+
+    console.log(`🔥 Input: "${apenasNumeros}" (${apenasNumeros.length} dígitos)`)
+
+    const digitosValidos = [7, 8, 9, 10, 14]
+    if (digitosValidos.includes(apenasNumeros.length)) {
+      console.log(`✅ Cartão completo: ${apenasNumeros}`)
+      iniciarLeitura(apenasNumeros)
+    } else if (apenasNumeros.length > 0) {
+      console.log(`⚠️ Cartão ignorado: ${apenasNumeros.length} dígitos (aceitos: 7, 8, 9, 10, 14)`)
+    }
   }
+
+  // Animação em looping
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isReading && !showSuccess) {
+        setIsApproaching(prev => !prev)
+      }
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [isReading, showSuccess])
+
+  // Captura input do leitor de cartão via keydown no document (sem input focado)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isReading || showSuccess) return
+
+      if (e.key === 'Enter') {
+        processarBuffer()
+        return
+      }
+
+      if (e.key.length === 1) {
+        bufferRef.current += e.key
+
+        if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current)
+        bufferTimeoutRef.current = setTimeout(() => {
+          processarBuffer()
+        }, 120)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      if (bufferTimeoutRef.current) clearTimeout(bufferTimeoutRef.current)
+    }
+  }, [isReading, showSuccess])
 
   return (
     <div className="container">

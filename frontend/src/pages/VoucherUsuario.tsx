@@ -85,9 +85,11 @@ function VoucherUsuario() {
 
   const { numero_cartao, usuario_nome } = location.state || {}
   const [usuarioTipo, setUsuarioTipo] = useState('')
-  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'confirm' | 'voucher_nao_utilizado'>('loading')
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'confirm' | 'voucher_nao_utilizado'>(
+    numero_cartao ? 'loading' : 'error'
+  )
 
-  const [mensagem, setMensagem] = useState('')
+  const [mensagem, setMensagem] = useState(numero_cartao ? '' : 'Dados do cartão não encontrados')
   const [voucherCode, setVoucherCode] = useState('')
   const [voucherAtivo, setVoucherAtivo] = useState('')
   const [periodo, setPeriodo] = useState('')
@@ -97,45 +99,11 @@ function VoucherUsuario() {
   const chamadaRealizada = useRef(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // =====================================================
-  // TIMER UNIFICADO (SUCCESS, VOUCHER_NAO_UTILIZADO, CONFIRM)
-  // =====================================================
-  useEffect(() => {
-    if ((status === 'success' || status === 'voucher_nao_utilizado' || status === 'confirm') && !encerrando) {
-      if (timerRef.current) clearInterval(timerRef.current)
-
-      timerRef.current = setInterval(() => {
-        setTempoRestante(prev => {
-          if (prev <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current)
-            voltarLeitor()
-            return 0
-          }
-          return prev - 1
-        })
-      }, 1000)
-    }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-  }, [status, encerrando])
-
-  // =====================================================
-  // CHAMADA DA API (APENAS UMA VEZ)
-  // =====================================================
-  useEffect(() => {
-    if (chamadaRealizada.current) return
-    chamadaRealizada.current = true
-
-    if (!numero_cartao) {
-      setStatus('error')
-      setMensagem('Dados do cartão não encontrados')
-      return
-    }
-
-    liberarVoucher()
-  }, [numero_cartao])
+  const voltarLeitor = () => {
+    setEncerrando(true)
+    if (timerRef.current) clearInterval(timerRef.current)
+    navigate('/')
+  }
 
   const liberarVoucher = async () => {
     try {
@@ -185,6 +153,45 @@ function VoucherUsuario() {
     }
   }
 
+  // =====================================================
+  // TIMER UNIFICADO (SUCCESS, VOUCHER_NAO_UTILIZADO, CONFIRM)
+  // =====================================================
+  useEffect(() => {
+    if ((status === 'success' || status === 'voucher_nao_utilizado' || status === 'confirm') && !encerrando) {
+      if (timerRef.current) clearInterval(timerRef.current)
+
+      timerRef.current = setInterval(() => {
+        setTempoRestante(prev => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current)
+            voltarLeitor()
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [status, encerrando])
+
+  // =====================================================
+  // CHAMADA DA API (APENAS UMA VEZ)
+  // =====================================================
+  useEffect(() => {
+    if (chamadaRealizada.current) return
+    chamadaRealizada.current = true
+
+    if (!numero_cartao) return
+
+    // liberarVoucher só chama setState após o `await` da chamada à API —
+    // a regra abaixo não distingue esse caso assíncrono do state-in-effect síncrono
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    liberarVoucher()
+  }, [numero_cartao])
+
   const substituirVoucher = async () => {
     setStatus('loading')
     setMensagem('Cancelando voucher antigo e gerando novo...')
@@ -216,12 +223,6 @@ function VoucherUsuario() {
       setStatus('error')
       setMensagem('Erro de conexão com o servidor')
     }
-  }
-
-  const voltarLeitor = () => {
-    setEncerrando(true)
-    if (timerRef.current) clearInterval(timerRef.current)
-    navigate('/')
   }
 
   const encerrarSessao = () => {
