@@ -178,7 +178,7 @@ function LeitorCartao() {
         <div className={`badge ${isApproaching && !isReading && !showSuccess ? 'approaching' : 'away'} ${isReading ? 'reading' : ''}`}>
           <div className="badge-chip"></div>
           <div className="badge-stripe"></div>
-          <div className="badge-text">VOUCHER<br />ACCESS</div>
+          <div className="badge-text">CARTÃO<br />DE ACESSO</div>
           <div className={`badge-glow ${isApproaching && !isReading && !showSuccess ? 'active' : ''}`}></div>
         </div>
 

@@ -82,13 +82,13 @@ Three external systems are involved, each with its own client module in `voucher
 ### Voucher stock
 
 Three MySQL tables (schema in `deploy/mysql/init.sql`, applied automatically to a fresh `mysql` container; pool config in `conexao.py`). `banco de dados/script_vouchers.sql` is an older scratch/reference copy of the first two tables with ad-hoc maintenance commands mixed in — don't mount it as an init script, it's not idempotent.
-- `vouchers_disponiveis` — stock: voucher code, `periodo` (bucket label, e.g. `1dia`), `status` (`disponivel`/`usado`).
-- `vouchers_impressos` — issuance history, FK to `vouchers_disponiveis`, keyed by `numero_cartao`/`id_credencial`.
+- `vouchers_estoque` — stock: voucher code, `periodo` (bucket label, e.g. `1dia`), `status` (`disponivel`/`usado`), `origem` (`totem`/`gerencia` — `totem` rows come from the daily replenishment job and sit `disponivel` until the kiosk hands one out; `gerencia` rows are generated on demand for a specific person by `gerencia.py`'s `api_gerar_voucher`/`api_substituir_voucher` and are inserted already `usado`, since they're never up for grabs by the kiosk).
+- `vouchers_gerados` — issuance history, FK to `vouchers_estoque`, keyed by `numero_cartao`/`id_credencial`.
 - `gerencia_sessoes` — `/gerencia` login sessions (see above).
 
 There is no in-process scheduler. The `scheduler` container (`deploy/scheduler/`) runs busybox `crond` — its `entrypoint.sh` writes `/etc/crontabs/root` at startup with `$KIOSK_API_KEY` substituted in, then two daily cron entries `curl` the corresponding endpoint on `flask:8000`. This reuses the exact same logic the API already exposes instead of duplicating it elsewhere, and avoids the classic "duplicate job per Gunicorn worker" bug an in-process background thread would hit:
 - **Repor estoque** (`/api/repor-estoque`) — if available `1dia` stock drops to/under `ESTOQUE_LIMITE_MINIMO`, tops back up to `ESTOQUE_LIMITE_MAXIMO` by generating new Omada vouchers (duration `VOUCHER_REPOSICAO_DURACAO_MINUTOS`) via `voucherService.gerar_e_inserir_vouchers` (parallel `ThreadPoolExecutor`) and bulk-inserting them.
-- **Limpar expirados** (`/api/limpar-expirados`) — walks `vouchers_impressos`, checks each voucher's `valid` state in Omada, deletes the DB record for ones no longer valid (frees that card/credential to receive a new voucher).
+- **Limpar expirados** (`/api/limpar-expirados`) — walks `vouchers_gerados`, checks each voucher's `valid` state in Omada, deletes the DB record for ones no longer valid (frees that card/credential to receive a new voucher).
 
 To change the schedule, edit the cron lines in `deploy/scheduler/entrypoint.sh` and rebuild that one container (`docker compose up -d --build scheduler`).
 
