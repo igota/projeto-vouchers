@@ -37,7 +37,7 @@ python app.py                     # Flask's own dev server, host 0.0.0.0:5000, n
 
 All secrets and environment-specific config live in `vouchers/.env` (see `.env.example` for the full list: DB credentials, Omada/iControl credentials, `KIOSK_API_KEY`, `FLASK_DEBUG`, `ALLOWED_ORIGINS`, `TIPOS_USUARIO_PERMITIDO`, printer and stock-replenishment settings). Never hardcode credentials back into the Python files. The daily job schedule is **not** in `.env` — it's the crontab baked into the `scheduler` container at startup (`deploy/scheduler/entrypoint.sh`).
 
-The allowlist of usernames who can log into `/gerencia` lives in `vouchers/json/usuarios_permitidos.json` — not committed (same treatment as `.env`), copy `usuarios_permitidos.json.example` to `usuarios_permitidos.json` and fill in real usernames.
+Who can log into `/gerencia`, and with which role, lives in the `usuarios` MySQL table (managed from the app itself, `/gerencia/configuracao` → aba Usuários — admin-only) — not a config file.
 
 ### Frontend outside Docker (quick local debugging only)
 
@@ -77,7 +77,7 @@ Three external systems are involved, each with its own client module in `voucher
 
 **Kiosk flow** (`frontend/src/pages/LeitorCartao.tsx` → `VoucherUsuario.tsx`, routes `/` and `/voucher`) — no user login. An RFID reader emulates a keyboard; the page buffers keystrokes and calls the unauthenticated-by-login (but key-protected) endpoints in `vouchers/app.py`: `buscar-cartao`, `liberar-voucher`, `substituir-voucher`, `cancelar-voucher`, `verificar-estoque`, `repor-estoque`, `limpar-expirados`, `imprimir-etiqueta`. All of them require the header `X-Kiosk-Key`, checked by the `kiosk_key_obrigatoria` decorator with no bypass — the daily jobs call these same endpoints over HTTP too (see "Voucher stock" below), so there's no in-process caller that needs to skip the check. Only iControl users whose `tipo_usuario` matches `TIPOS_USUARIO_PERMITIDO` (env) can pull a voucher. The frontend sends this key via `frontend/src/kioskApi.ts`'s `kioskFetch` — note the key ships in the public JS bundle, so it only screens out casual/off-network access, not a determined attacker with DevTools on the kiosk itself.
 
-**Gerência (admin) flow** (`GerenciaLogin.tsx` → `GerenciaDashboard.tsx`, routes `/gerencia` and `/gerencia/consulta`, backend blueprint `gerencia.py`) — real login: username must be in `vouchers/json/usuarios_permitidos.json`, password is validated live against Vitae. On success the backend issues a random session token (2h TTL) stored in the `gerencia_sessoes` MySQL table (**not** an in-memory dict — Gunicorn runs multiple worker processes, and a dict in one worker's memory is invisible to the others, which caused intermittent "Não autenticado" errors until this was fixed) and the frontend stores it in `localStorage`, sending it as `X-Gerencia-Token` (`gerenciaApi.ts`'s `gerenciaFetch`), checked by the `login_obrigatorio` decorator. Dashboard features: search a person in iControl, check/generate/replace/deactivate a voucher (arbitrary duration), view stock and issuance history.
+**Gerência (admin) flow** (`GerenciaLogin.tsx` → `GerenciaConsulta.tsx`, routes `/gerencia` and `/gerencia/consulta`, backend blueprint `gerencia.py`) — real login: username must exist and be `ativo` in the `usuarios` table, password is validated live against Vitae. On success the backend also captures the user's full name from the post-login Vitae HTML (`vitae_auth.py`'s `_extrair_nome_usuario`, `#logout > span`) and writes it plus `ultimo_acesso` back to `usuarios` — nothing is typed in by hand except at registration time. The table also carries a `tipo` (`COORDENADOR`/`ADMINISTRADOR`) that gates the Configuração page (`GerenciaConfiguracao.tsx`, route `/gerencia/configuracao`, backend endpoints under `admin_obrigatorio`) where an administrator manages other users (Login, Tipo, Status — no delete, only deactivate; the backend refuses to demote/deactivate the last active administrator). On login the backend issues a random session token (2h TTL) stored in the `gerencia_sessoes` MySQL table (**not** an in-memory dict — Gunicorn runs multiple worker processes, and a dict in one worker's memory is invisible to the others, which caused intermittent "Não autenticado" errors until this was fixed) and the frontend stores it in `localStorage`, sending it as `X-Gerencia-Token` (`gerenciaApi.ts`'s `gerenciaFetch`), checked by the `login_obrigatorio` decorator. Dashboard features: search a person in iControl, check/generate/replace/deactivate a voucher (arbitrary duration), view stock and issuance history.
 
 ### Voucher stock
 
@@ -106,6 +106,11 @@ Runs as four Docker containers via `vouchers/docker-compose.yml` — see "Runnin
 ```sql
 CREATE USER 'vouchers_app'@'%' IDENTIFIED BY '<DB_PASSWORD>';
 GRANT ALL PRIVILEGES ON vouchers_db.* TO 'vouchers_app'@'%';
+```
+
+Same story for the `usuarios` table added after the initial deploy: `init.sql` only runs on a brand-new empty volume, so on a VM that was already running, create the table by hand (same `CREATE TABLE` as in `deploy/mysql/init.sql`) and seed at least one administrator — otherwise nobody can reach `/gerencia/configuracao` to add others:
+```sql
+INSERT INTO usuarios (login, tipo, status) VALUES ('SEU_USUARIO_VITAE', 'ADMINISTRADOR', 'ativo');
 ```
 
 All four services share the `x-logging` anchor (`json-file`, `max-size: 10m`, `max-file: 3`) — without it Docker's default log driver has no size limit, and a container logging for months straight can fill the VM's disk. No HTTPS on purpose: this only runs on the internal LAN, not exposed externally, so a self-signed cert was judged not worth the hassle of installing it as trusted on every device that hits `/gerencia`.

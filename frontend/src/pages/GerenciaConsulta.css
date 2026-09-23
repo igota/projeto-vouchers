@@ -8,45 +8,6 @@
   color: #f0f4ff;
 }
 
-/* ===== HEADER ===== */
-.gd-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 32px;
-  background: rgba(18, 22, 36, 0.9);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.gd-header-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: #f5d742;
-  letter-spacing: 0.3px;
-}
-
-.gd-logout-btn {
-  background: rgba(255, 70, 70, 0.1);
-  border: 1px solid rgba(255, 70, 70, 0.2);
-  color: #ff7a7a;
-  padding: 8px 20px;
-  border-radius: 40px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: inherit;
-}
-
-.gd-logout-btn:hover {
-  background: rgba(255, 70, 70, 0.18);
-  border-color: rgba(255, 70, 70, 0.35);
-}
-
 /* ===== MAIN ===== */
 .gd-main {
   padding: 32px;

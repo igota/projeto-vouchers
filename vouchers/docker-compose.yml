@@ -20,6 +20,9 @@ services:
     image: mysql:8.0
     container_name: mysql
     environment:
+      # Sem isso o container roda em UTC (default-time-zone do MySQL é
+      # SYSTEM) e NOW() fica 3h adiantado em relação a Fortaleza/CE.
+      TZ: America/Fortaleza
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       # Cria automaticamente um usuário não-root com ALL PRIVILEGES só no

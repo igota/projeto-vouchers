@@ -17,5 +17,5 @@ urllib3==2.2.3
 # (deploy/scheduler/), which just curls the app's own HTTP endpoints.
 gunicorn==23.0.0
 
-# Only used by teste_login_seguranca.py (manual test script)
+# Extrai o nome completo do usuário do HTML pós-login do Vitae (vitae_auth.py)
 beautifulsoup4==4.12.3

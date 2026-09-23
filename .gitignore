@@ -4,7 +4,6 @@
 !.env.example
 vouchers/.env
 frontend/.env
-vouchers/json/usuarios_permitidos.json
 session.json
 session_hotspot.json
 projetoTeste/session.json
