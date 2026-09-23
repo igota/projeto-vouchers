@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { clearToken, gerenciaFetch, getToken } from '../gerenciaApi'
+import { gerenciaFetch, getToken } from '../gerenciaApi'
+import GerenciaHeader from './GerenciaHeader'
 import './GerenciaConsulta.css'
 
 type TipoBusca = 'nome' | 'identificador'
@@ -59,17 +60,8 @@ function GerenciaConsulta() {
   const [duracaoUnidade, setDuracaoUnidade] = useState<string>('Dias')
 
   useEffect(() => {
-    if (!getToken()) { navigate('/gerencia'); return }
-    gerenciaFetch('/gerencia/api/me').then(r => {
-      if (!r.ok) { clearToken(); navigate('/gerencia') }
-    })
+    if (!getToken()) { navigate('/gerencia') }
   }, [])
-
-  const handleLogout = async () => {
-    await gerenciaFetch('/gerencia/logout', { method: 'POST' })
-    clearToken()
-    navigate('/gerencia')
-  }
 
   const verificarStatusEmParalelo = (usuarios: Usuario[]) => {
     usuarios.forEach(u => {
@@ -292,10 +284,7 @@ function GerenciaConsulta() {
   // =====================================================
   return (
     <div className="gd-body">
-      <header className="gd-header">
-        <span className="gd-header-title">HRN · Gerenciamento de Vouchers</span>
-        <button className="gd-logout-btn" onClick={handleLogout}>Sair</button>
-      </header>
+      <GerenciaHeader titulo="HRN · Gerenciamento de Vouchers" />
 
       <main className="gd-main">
         {/* Card de busca */}

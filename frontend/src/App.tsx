@@ -3,6 +3,7 @@ import LeitorCartao from './pages/LeitorCartao'
 import VoucherUsuario from './pages/VoucherUsuario'
 import GerenciaLogin from './pages/GerenciaLogin'
 import GerenciaConsulta from './pages/GerenciaConsulta'
+import GerenciaConfiguracao from './pages/GerenciaConfiguracao'
 import './App.css'
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
         {/* Gerenciamento de coordenadores */}
         <Route path="/gerencia" element={<GerenciaLogin />} />
         <Route path="/gerencia/consulta" element={<GerenciaConsulta />} />
+        <Route path="/gerencia/configuracao" element={<GerenciaConfiguracao />} />
       </Routes>
     </BrowserRouter>
   )

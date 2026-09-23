@@ -1,4 +1,3 @@
-import json
 import os
 import secrets
 from datetime import datetime, timedelta
@@ -9,7 +8,6 @@ from conexao import get_db_connection
 from vitae_auth import login_vitae
 
 VITAE_URL = os.environ['VITAE_URL']
-USUARIOS_FILE = os.path.join(os.path.dirname(__file__), 'json', 'usuarios_permitidos.json')
 
 gerencia_bp = Blueprint('gerencia', __name__, url_prefix='/gerencia')
 
@@ -20,9 +18,17 @@ gerencia_bp = Blueprint('gerencia', __name__, url_prefix='/gerencia')
 SESSION_DURATION = timedelta(hours=2)
 
 
-def _carregar_usuarios_permitidos():
-    with open(USUARIOS_FILE, 'r', encoding='utf-8') as f:
-        return [u.upper() for u in json.load(f)['usuarios']]
+def _buscar_usuario_gerencia(login: str):
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT id, login, nome, tipo, status FROM usuarios WHERE login = %s",
+                (login,),
+            )
+            return cursor.fetchone()
+    finally:
+        connection.close()
 
 
 def _criar_sessao(username: str) -> str:
@@ -85,6 +91,17 @@ def login_obrigatorio(f):
     return decorated
 
 
+def admin_obrigatorio(f):
+    @wraps(f)
+    @login_obrigatorio
+    def decorated(*args, **kwargs):
+        usuario = _buscar_usuario_gerencia(request.gerencia_username)
+        if not usuario or usuario['tipo'] != 'ADMINISTRADOR':
+            return jsonify({'erro': 'Acesso restrito a administradores'}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
 # =====================================================
 # AUTH
 # =====================================================
@@ -98,7 +115,8 @@ def login():
     if not username or not password:
         return jsonify({'success': False, 'error': 'Usuário e Senha são obrigatórios!'})
 
-    if username not in _carregar_usuarios_permitidos():
+    usuario = _buscar_usuario_gerencia(username)
+    if not usuario or usuario['status'] != 'ativo':
         return jsonify({'success': False, 'error': 'Usuário não autorizado a usar este sistema.'})
 
     try:
@@ -109,9 +127,21 @@ def login():
     if not resultado['sucesso']:
         return jsonify({'success': False, 'error': 'Usuário ou Senha do Vitae incorretos!'})
 
+    nome = resultado.get('nome_completo') or username
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE usuarios SET nome = %s, ultimo_acesso = NOW() WHERE login = %s",
+                (nome, username),
+            )
+        connection.commit()
+    finally:
+        connection.close()
+
     token = _criar_sessao(username)
 
-    return jsonify({'success': True, 'token': token, 'username': username})
+    return jsonify({'success': True, 'token': token, 'username': username, 'nome': nome, 'tipo': usuario['tipo']})
 
 
 @gerencia_bp.route('/logout', methods=['POST'])
@@ -485,7 +515,129 @@ def api_desativar_voucher():
 @gerencia_bp.route('/api/me')
 @login_obrigatorio
 def me():
-    return jsonify({'username': request.gerencia_username})
+    usuario = _buscar_usuario_gerencia(request.gerencia_username)
+    return jsonify({
+        'username': request.gerencia_username,
+        'nome': usuario['nome'] if usuario else None,
+        'tipo': usuario['tipo'] if usuario else None,
+    })
+
+
+# =====================================================
+# GESTÃO DE USUÁRIOS DO /gerencia (apenas ADMINISTRADOR)
+# =====================================================
+
+@gerencia_bp.route('/api/usuarios', methods=['GET'])
+@admin_obrigatorio
+def api_listar_usuarios():
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id, login, nome, tipo, status,
+                       DATE_FORMAT(ultimo_acesso, '%d/%m/%Y %H:%i') as ultimo_acesso
+                FROM usuarios
+                ORDER BY login
+            """)
+            return jsonify({'sucesso': True, 'usuarios': cursor.fetchall()})
+    except Exception as e:
+        return jsonify({'sucesso': False, 'erro': str(e)}), 500
+    finally:
+        connection.close()
+
+
+@gerencia_bp.route('/api/usuarios', methods=['POST'])
+@admin_obrigatorio
+def api_criar_usuario():
+    data = request.get_json() or {}
+    login_novo = (data.get('login') or '').strip().upper()
+    tipo = data.get('tipo') or 'COORDENADOR'
+    status = data.get('status') or 'ativo'
+
+    if not login_novo:
+        return jsonify({'sucesso': False, 'mensagem': 'Login é obrigatório.'}), 400
+    if tipo not in ('COORDENADOR', 'ADMINISTRADOR'):
+        return jsonify({'sucesso': False, 'mensagem': 'Tipo inválido.'}), 400
+    if status not in ('ativo', 'inativo'):
+        return jsonify({'sucesso': False, 'mensagem': 'Status inválido.'}), 400
+
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT id FROM usuarios WHERE login = %s", (login_novo,))
+            if cursor.fetchone():
+                return jsonify({'sucesso': False, 'mensagem': 'Já existe um usuário com esse login.'}), 400
+
+            cursor.execute(
+                "INSERT INTO usuarios (login, tipo, status) VALUES (%s, %s, %s)",
+                (login_novo, tipo, status),
+            )
+            connection.commit()
+            return jsonify({'sucesso': True})
+    except Exception as e:
+        connection.rollback()
+        return jsonify({'sucesso': False, 'erro': str(e)}), 500
+    finally:
+        connection.close()
+
+
+@gerencia_bp.route('/api/usuarios/<int:usuario_id>', methods=['PUT'])
+@admin_obrigatorio
+def api_editar_usuario(usuario_id):
+    data = request.get_json() or {}
+    login_novo = (data.get('login') or '').strip().upper()
+    tipo = data.get('tipo') or 'COORDENADOR'
+    status = data.get('status') or 'ativo'
+
+    if not login_novo:
+        return jsonify({'sucesso': False, 'mensagem': 'Login é obrigatório.'}), 400
+    if tipo not in ('COORDENADOR', 'ADMINISTRADOR'):
+        return jsonify({'sucesso': False, 'mensagem': 'Tipo inválido.'}), 400
+    if status not in ('ativo', 'inativo'):
+        return jsonify({'sucesso': False, 'mensagem': 'Status inválido.'}), 400
+
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT login, tipo, status FROM usuarios WHERE id = %s", (usuario_id,))
+            atual = cursor.fetchone()
+            if not atual:
+                return jsonify({'sucesso': False, 'mensagem': 'Usuário não encontrado.'}), 404
+
+            cursor.execute(
+                "SELECT id FROM usuarios WHERE login = %s AND id != %s",
+                (login_novo, usuario_id),
+            )
+            if cursor.fetchone():
+                return jsonify({'sucesso': False, 'mensagem': 'Já existe um usuário com esse login.'}), 400
+
+            # Rebaixar/desativar o último ADMINISTRADOR ativo travaria o acesso à Configuração.
+            deixa_de_ser_admin_ativo = (
+                atual['tipo'] == 'ADMINISTRADOR' and atual['status'] == 'ativo'
+                and (tipo != 'ADMINISTRADOR' or status != 'ativo')
+            )
+            if deixa_de_ser_admin_ativo:
+                cursor.execute("""
+                    SELECT COUNT(*) as total FROM usuarios
+                    WHERE tipo = 'ADMINISTRADOR' AND status = 'ativo' AND id != %s
+                """, (usuario_id,))
+                if cursor.fetchone()['total'] == 0:
+                    return jsonify({
+                        'sucesso': False,
+                        'mensagem': 'Não é possível rebaixar/desativar o último administrador ativo.',
+                    }), 400
+
+            cursor.execute(
+                "UPDATE usuarios SET login = %s, tipo = %s, status = %s WHERE id = %s",
+                (login_novo, tipo, status, usuario_id),
+            )
+            connection.commit()
+            return jsonify({'sucesso': True})
+    except Exception as e:
+        connection.rollback()
+        return jsonify({'sucesso': False, 'erro': str(e)}), 500
+    finally:
+        connection.close()
 
 
 @gerencia_bp.route('/api/estoque')

@@ -39,3 +39,21 @@ CREATE TABLE IF NOT EXISTS gerencia_sessoes (
 
     INDEX idx_expires (expires_at)
 );
+
+-- Quem pode logar no /gerencia e com qual papel. Substitui o antigo
+-- allowlist plano em json/usuarios_permitidos.json — fica no banco pelo
+-- mesmo motivo de gerencia_sessoes (múltiplos workers do Gunicorn). `nome`
+-- e `ultimo_acesso` são preenchidos automaticamente no login (capturados
+-- do Vitae), não digitados no cadastro.
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    login VARCHAR(100) NOT NULL UNIQUE,
+    nome VARCHAR(255) NULL,
+    tipo ENUM('COORDENADOR', 'ADMINISTRADOR') NOT NULL DEFAULT 'COORDENADOR',
+    status ENUM('ativo', 'inativo') NOT NULL DEFAULT 'ativo',
+    ultimo_acesso DATETIME NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_login (login),
+    INDEX idx_status (status)
+);
