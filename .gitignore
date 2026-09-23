@@ -4,6 +4,7 @@
 !.env.example
 vouchers/.env
 frontend/.env
+vouchers/docker-compose.override.yml
 session.json
 session_hotspot.json
 projetoTeste/session.json

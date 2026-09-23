@@ -195,16 +195,16 @@ def api_verificar_voucher():
             if id_credencial:
                 cursor.execute("""
                     SELECT vi.data_impressao, vd.numero_voucher, vd.periodo
-                    FROM vouchers_impressos vi
-                    JOIN vouchers_disponiveis vd ON vi.voucher_id = vd.id
+                    FROM vouchers_gerados vi
+                    JOIN vouchers_estoque vd ON vi.voucher_id = vd.id
                     WHERE vi.id_credencial = %s
                     ORDER BY vi.data_impressao DESC LIMIT 1
                 """, (id_credencial,))
             elif numero_cartao:
                 cursor.execute("""
                     SELECT vi.data_impressao, vd.numero_voucher, vd.periodo
-                    FROM vouchers_impressos vi
-                    JOIN vouchers_disponiveis vd ON vi.voucher_id = vd.id
+                    FROM vouchers_gerados vi
+                    JOIN vouchers_estoque vd ON vi.voucher_id = vd.id
                     WHERE vi.numero_cartao = %s
                     ORDER BY vi.data_impressao DESC LIMIT 1
                 """, (numero_cartao,))
@@ -335,31 +335,31 @@ def api_gerar_voucher():
         with connection.cursor() as cursor:
             # 1. Inserir no estoque com o período escolhido
             cursor.execute("""
-                INSERT INTO vouchers_disponiveis 
-                (numero_voucher, periodo, status, created_at)
-                VALUES (%s, %s, %s, %s)
-            """, (voucher_code, periodo_formatado, 'disponivel', datetime.now()))
+                INSERT INTO vouchers_estoque
+                (numero_voucher, periodo, status, origem, created_at)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (voucher_code, periodo_formatado, 'usado', 'gerencia', datetime.now()))
 
             # 2. PEGAR O ID DO VOUCHER INSERIDO
             voucher_id = cursor.lastrowid
 
             # 3. Verificar se já existe impressão para este usuário
             if id_credencial:
-                cursor.execute("SELECT id FROM vouchers_impressos WHERE id_credencial = %s", (id_credencial,))
+                cursor.execute("SELECT id FROM vouchers_gerados WHERE id_credencial = %s", (id_credencial,))
             else:
-                cursor.execute("SELECT id FROM vouchers_impressos WHERE numero_cartao = %s", (numero_cartao,))
+                cursor.execute("SELECT id FROM vouchers_gerados WHERE numero_cartao = %s", (numero_cartao,))
             existente = cursor.fetchone()
 
             # 4. Registrar impressão (USANDO O voucher_id CORRETO)
             if existente:
                 cursor.execute("""
-                    UPDATE vouchers_impressos 
+                    UPDATE vouchers_gerados 
                     SET voucher_id = %s, data_impressao = %s
                     WHERE id = %s
                 """, (voucher_id, datetime.now(), existente['id']))
             else:
                 cursor.execute("""
-                    INSERT INTO vouchers_impressos
+                    INSERT INTO vouchers_gerados
                         (voucher_id, numero_cartao, nome_completo, tipo_usuario, data_impressao, id_credencial)
                     VALUES (%s, %s, %s, %s, %s, %s)
                 """, (voucher_id, numero_cartao, nome, tipo_usuario, datetime.now(), id_credencial))
@@ -416,31 +416,31 @@ def api_substituir_voucher():
         with connection.cursor() as cursor:
             # 1. Inserir no estoque
             cursor.execute("""
-                INSERT INTO vouchers_disponiveis 
-                (numero_voucher, periodo, status, created_at)
-                VALUES (%s, %s, %s, %s)
-            """, (voucher_code, periodo_formatado, 'disponivel', datetime.now()))
+                INSERT INTO vouchers_estoque
+                (numero_voucher, periodo, status, origem, created_at)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (voucher_code, periodo_formatado, 'usado', 'gerencia', datetime.now()))
 
             # 2. PEGAR O ID DO VOUCHER INSERIDO
             voucher_id = cursor.lastrowid
 
             # 3. Verificar se já existe impressão
             if id_credencial:
-                cursor.execute("SELECT id FROM vouchers_impressos WHERE id_credencial = %s", (id_credencial,))
+                cursor.execute("SELECT id FROM vouchers_gerados WHERE id_credencial = %s", (id_credencial,))
             else:
-                cursor.execute("SELECT id FROM vouchers_impressos WHERE numero_cartao = %s", (numero_cartao,))
+                cursor.execute("SELECT id FROM vouchers_gerados WHERE numero_cartao = %s", (numero_cartao,))
             existente = cursor.fetchone()
 
             # 4. Atualizar impressão (USANDO O voucher_id CORRETO)
             if existente:
                 cursor.execute("""
-                    UPDATE vouchers_impressos 
+                    UPDATE vouchers_gerados 
                     SET voucher_id = %s, data_impressao = %s
                     WHERE id = %s
                 """, (voucher_id, datetime.now(), existente['id']))
             else:
                 cursor.execute("""
-                    INSERT INTO vouchers_impressos
+                    INSERT INTO vouchers_gerados
                         (voucher_id, numero_cartao, nome_completo, tipo_usuario, data_impressao, id_credencial)
                     VALUES (%s, %s, %s, %s, %s, %s)
                 """, (voucher_id, numero_cartao, nome, tipo_usuario, datetime.now(), id_credencial))
@@ -471,16 +471,16 @@ def api_desativar_voucher():
             if id_credencial:
                 cursor.execute("""
                     SELECT vi.id as impressao_id, vd.numero_voucher
-                    FROM vouchers_impressos vi
-                    JOIN vouchers_disponiveis vd ON vi.voucher_id = vd.id
+                    FROM vouchers_gerados vi
+                    JOIN vouchers_estoque vd ON vi.voucher_id = vd.id
                     WHERE vi.id_credencial = %s
                     ORDER BY vi.data_impressao DESC LIMIT 1
                 """, (id_credencial,))
             else:
                 cursor.execute("""
                     SELECT vi.id as impressao_id, vd.numero_voucher
-                    FROM vouchers_impressos vi
-                    JOIN vouchers_disponiveis vd ON vi.voucher_id = vd.id
+                    FROM vouchers_gerados vi
+                    JOIN vouchers_estoque vd ON vi.voucher_id = vd.id
                     WHERE vi.numero_cartao = %s
                     ORDER BY vi.data_impressao DESC LIMIT 1
                 """, (numero_cartao,))
@@ -497,7 +497,7 @@ def api_desativar_voucher():
                 sucesso = deletar_voucher_omada(reg['numero_voucher'])
 
             if sucesso:
-                cursor.execute("DELETE FROM vouchers_impressos WHERE id = %s", (reg['impressao_id'],))
+                cursor.execute("DELETE FROM vouchers_gerados WHERE id = %s", (reg['impressao_id'],))
                 connection.commit()
 
             return jsonify({
@@ -652,7 +652,7 @@ def api_estoque():
                     COUNT(*) as total,
                     SUM(CASE WHEN status = 'disponivel' THEN 1 ELSE 0 END) as disponiveis,
                     SUM(CASE WHEN status = 'usado'     THEN 1 ELSE 0 END) as usados
-                FROM vouchers_disponiveis
+                FROM vouchers_estoque
                 WHERE periodo = '1dia'
             """)
             return jsonify({'sucesso': True, 'estoque': cursor.fetchone()})
@@ -677,14 +677,14 @@ def api_historico():
                 SELECT vi.id, vd.numero_voucher, vi.nome_completo,
                        vi.tipo_usuario, vi.numero_cartao,
                        DATE_FORMAT(vi.data_impressao, '%%d/%%m/%%Y %%H:%%i') as data_impressao
-                FROM vouchers_impressos vi
-                JOIN vouchers_disponiveis vd ON vi.voucher_id = vd.id
+                FROM vouchers_gerados vi
+                JOIN vouchers_estoque vd ON vi.voucher_id = vd.id
                 ORDER BY vi.data_impressao DESC
                 LIMIT %s OFFSET %s
             """, (por_pagina, offset))
             registros = cursor.fetchall()
 
-            cursor.execute("SELECT COUNT(*) as total FROM vouchers_impressos")
+            cursor.execute("SELECT COUNT(*) as total FROM vouchers_gerados")
             total = cursor.fetchone()['total']
 
         return jsonify({'sucesso': True, 'registros': registros, 'total': total, 'pagina': pagina})

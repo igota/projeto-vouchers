@@ -157,8 +157,8 @@ def imprimir_etiqueta():
             with connection.cursor() as cursor:
                 cursor.execute("""
                     SELECT vi.nome_completo, vi.tipo_usuario
-                    FROM vouchers_impressos vi
-                    JOIN vouchers_disponiveis vd ON vi.voucher_id = vd.id
+                    FROM vouchers_gerados vi
+                    JOIN vouchers_estoque vd ON vi.voucher_id = vd.id
                     WHERE vd.numero_voucher = %s
                     ORDER BY vi.data_impressao DESC
                     LIMIT 1
@@ -309,7 +309,7 @@ def verificar_estoque():
                 SELECT COUNT(*) as total,
                        SUM(CASE WHEN status = 'disponivel' THEN 1 ELSE 0 END) as disponiveis,
                        SUM(CASE WHEN status = 'usado' THEN 1 ELSE 0 END) as usados
-                FROM vouchers_disponiveis 
+                FROM vouchers_estoque 
                 WHERE periodo = '1dia'
             """)
             result = cursor.fetchone()
@@ -345,7 +345,7 @@ def repor_estoque():
         with connection.cursor() as cursor:
             cursor.execute("""
                 SELECT COUNT(*) as disponiveis
-                FROM vouchers_disponiveis 
+                FROM vouchers_estoque 
                 WHERE periodo = '1dia' AND status = 'disponivel'
             """)
             result = cursor.fetchone()
@@ -434,8 +434,8 @@ def liberar_voucher():
                 # 1. Buscar por id_credencial (prioritário)
                 cursor.execute("""
                     SELECT vi.*, vd.numero_voucher 
-                    FROM vouchers_impressos vi
-                    JOIN vouchers_disponiveis vd ON vi.voucher_id = vd.id
+                    FROM vouchers_gerados vi
+                    JOIN vouchers_estoque vd ON vi.voucher_id = vd.id
                     WHERE vi.id_credencial = %s
                     ORDER BY vi.data_impressao DESC
                     LIMIT 1
@@ -448,8 +448,8 @@ def liberar_voucher():
                     print(f"🔍 Não encontrado por id_credencial, buscando por nome...")
                     cursor.execute("""
                         SELECT vi.*, vd.numero_voucher 
-                        FROM vouchers_impressos vi
-                        JOIN vouchers_disponiveis vd ON vi.voucher_id = vd.id
+                        FROM vouchers_gerados vi
+                        JOIN vouchers_estoque vd ON vi.voucher_id = vd.id
                         WHERE vi.nome_completo = %s
                         ORDER BY vi.data_impressao DESC
                         LIMIT 1
@@ -486,7 +486,7 @@ def liberar_voucher():
                 # ============================================
                 cursor.execute("""
                     SELECT id, numero_voucher 
-                    FROM vouchers_disponiveis 
+                    FROM vouchers_estoque 
                     WHERE periodo = '1dia' AND status = 'disponivel'
                     LIMIT 1
                 """)
@@ -498,7 +498,7 @@ def liberar_voucher():
                 
                 # Marcar voucher como usado
                 cursor.execute("""
-                    UPDATE vouchers_disponiveis 
+                    UPDATE vouchers_estoque 
                     SET status = 'usado' 
                     WHERE id = %s
                 """, (voucher['id'],))
@@ -509,14 +509,14 @@ def liberar_voucher():
                 if registro_existente:
                     # Atualizar registro existente
                     cursor.execute("""
-                        UPDATE vouchers_impressos 
+                        UPDATE vouchers_gerados 
                         SET voucher_id = %s, data_impressao = %s
                         WHERE id = %s
                     """, (voucher['id'], datetime.now(), registro_existente['id']))
                 else:
                     # Inserir novo registro com id_credencial
                     cursor.execute("""
-                        INSERT INTO vouchers_impressos 
+                        INSERT INTO vouchers_gerados 
                         (voucher_id, numero_cartao, nome_completo, tipo_usuario, data_impressao, id_credencial)
                         VALUES (%s, %s, %s, %s, %s, %s)
                     """, (voucher['id'], numero_cartao, nome_usuario, tipo_exibicao, datetime.now(), id_credencial))
@@ -589,7 +589,7 @@ def substituir_voucher():
                 # Buscar voucher disponível no estoque
                 cursor.execute("""
                     SELECT id, numero_voucher 
-                    FROM vouchers_disponiveis 
+                    FROM vouchers_estoque 
                     WHERE periodo = '1dia' AND status = 'disponivel'
                     LIMIT 1
                 """)
@@ -601,7 +601,7 @@ def substituir_voucher():
                 
                 # Marcar voucher como usado
                 cursor.execute("""
-                    UPDATE vouchers_disponiveis 
+                    UPDATE vouchers_estoque 
                     SET status = 'usado' 
                     WHERE id = %s
                 """, (voucher['id'],))
@@ -610,7 +610,7 @@ def substituir_voucher():
                 # ATUALIZAR REGISTRO COM id_credencial
                 # ============================================
                 cursor.execute("""
-                    UPDATE vouchers_impressos 
+                    UPDATE vouchers_gerados 
                     SET voucher_id = %s, data_impressao = %s
                     WHERE id_credencial = %s
                 """, (voucher['id'], datetime.now(), id_credencial))
@@ -665,8 +665,8 @@ def limpar_expirados():
             with connection.cursor() as cursor:
                 cursor.execute("""
                     SELECT vi.id, vd.numero_voucher 
-                    FROM vouchers_impressos vi
-                    JOIN vouchers_disponiveis vd ON vi.voucher_id = vd.id
+                    FROM vouchers_gerados vi
+                    JOIN vouchers_estoque vd ON vi.voucher_id = vd.id
                 """)
                 
                 registros = cursor.fetchall()
@@ -680,7 +680,7 @@ def limpar_expirados():
                     client = buscar_cliente_por_voucher(voucher_code)
                     
                     if client and client.get('valid') == False:
-                        cursor.execute("DELETE FROM vouchers_impressos WHERE id = %s", (voucher_id,))
+                        cursor.execute("DELETE FROM vouchers_gerados WHERE id = %s", (voucher_id,))
                         removidos += 1
                         print(f"[LIMPEZA] Removido: {voucher_code} (valid=false)")
                 

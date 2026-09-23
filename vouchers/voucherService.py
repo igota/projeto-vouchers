@@ -173,7 +173,7 @@ def gerar_e_inserir_vouchers(quantidade: int = 10, max_workers: int = 3, delay: 
         try:
             with connection.cursor() as cursor:
                 sql = """
-                    INSERT INTO vouchers_disponiveis 
+                    INSERT INTO vouchers_estoque 
                     (numero_voucher, periodo, status, created_at) 
                     VALUES (%s, %s, %s, %s)
                 """
@@ -199,7 +199,7 @@ def verificar_estoque():
             cursor.execute("""
                 SELECT COUNT(*) as total,
                        SUM(CASE WHEN status = 'disponivel' THEN 1 ELSE 0 END) as disponiveis
-                FROM vouchers_disponiveis 
+                FROM vouchers_estoque 
                 WHERE periodo = '1dia'
             """)
             row = cursor.fetchone()
