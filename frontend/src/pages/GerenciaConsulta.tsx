@@ -30,6 +30,18 @@ interface Usuario {
   status: string | null
 }
 
+const DURACAO_MAXIMA_DIAS = 365
+const MINUTOS_POR_UNIDADE: Record<string, number> = { Minutos: 1, Horas: 60, Dias: 24 * 60 }
+
+function validarDuracao(valor: string, unidade: string): string | null {
+  const n = Number(valor)
+  if (!valor || n <= 0) return 'Informe um valor válido para o período.'
+  if (n * (MINUTOS_POR_UNIDADE[unidade] ?? 1) > DURACAO_MAXIMA_DIAS * 24 * 60) {
+    return `O período não pode ser maior que ${DURACAO_MAXIMA_DIAS} dias.`
+  }
+  return null
+}
+
 function GerenciaConsulta() {
   const navigate = useNavigate()
 
@@ -166,8 +178,9 @@ function GerenciaConsulta() {
   if (!usuarioSelecionado) return
   
   const valorNumerico = Number(duracaoValor)
-  if (!duracaoValor || valorNumerico <= 0) {
-    setErroModal('Informe um valor válido para o período.')
+  const erroDuracao = validarDuracao(duracaoValor, duracaoUnidade)
+  if (erroDuracao) {
+    setErroModal(erroDuracao)
     setModalStatus('erro')
     return
   }
@@ -206,8 +219,9 @@ function GerenciaConsulta() {
     if (!usuarioSelecionado) return
 
     const valorNumerico = Number(duracaoValor)
-    if (!duracaoValor || valorNumerico <= 0) {
-      setErroModal('Informe um valor válido para o período.')
+    const erroDuracao = validarDuracao(duracaoValor, duracaoUnidade)
+    if (erroDuracao) {
+      setErroModal(erroDuracao)
       setModalStatus('erro')
       return
     }

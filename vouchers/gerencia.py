@@ -277,6 +277,10 @@ def converter_para_minutos(valor: int, unidade: str) -> int:
         return valor  # fallback
 
 
+DURACAO_MAXIMA_DIAS = 365
+DURACAO_MAXIMA_MINUTOS = DURACAO_MAXIMA_DIAS * 24 * 60
+
+
 def formatar_periodo(valor: int, unidade: str) -> str:
     """Formata o período para exibição/histórico"""
     return f"{valor} {unidade}"
@@ -320,6 +324,9 @@ def api_gerar_voucher():
 
     if minutos <= 0:
         return jsonify({'sucesso': False, 'mensagem': 'Período inválido.'}), 400
+
+    if minutos > DURACAO_MAXIMA_MINUTOS:
+        return jsonify({'sucesso': False, 'mensagem': f'O período não pode ser maior que {DURACAO_MAXIMA_DIAS} dias.'}), 400
 
     # Formatar período para salvar no banco
     periodo_formatado = formatar_periodo(duracao_valor, duracao_unidade)
@@ -397,6 +404,9 @@ def api_substituir_voucher():
     minutos = converter_para_minutos(duracao_valor, duracao_unidade)
     if minutos <= 0:
         return jsonify({'sucesso': False, 'mensagem': 'Período inválido.'}), 400
+
+    if minutos > DURACAO_MAXIMA_MINUTOS:
+        return jsonify({'sucesso': False, 'mensagem': f'O período não pode ser maior que {DURACAO_MAXIMA_DIAS} dias.'}), 400
 
     periodo_formatado = formatar_periodo(duracao_valor, duracao_unidade)
 
