@@ -141,7 +141,10 @@ function GerenciaConfiguracao() {
         <div className="gd-card">
           <div className="gc-card-header">
             <h2 className="gd-card-title" style={{ marginBottom: 0 }}>Usuários do Sistema</h2>
-            <button className="gc-btn-novo" onClick={abrirModalNovo}>+ Novo Usuário</button>
+            <div className="gc-card-header-actions">
+              <button className="gc-btn-voltar" onClick={() => navigate('/gerencia/consulta')}>Voltar</button>
+              <button className="gc-btn-novo" onClick={abrirModalNovo}>+ Novo Usuário</button>
+            </div>
           </div>
 
           {erro && <div className="gd-error">{erro}</div>}
