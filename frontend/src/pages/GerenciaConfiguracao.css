@@ -34,6 +34,29 @@
   justify-content: space-between;
 }
 
+.gc-card-header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.gc-btn-voltar {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #b0c4e0;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.gc-btn-voltar:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #f0f4ff;
+}
+
 .gc-btn-novo {
   background: linear-gradient(145deg, #4a6cf7, #6c4bf7);
   color: white;
